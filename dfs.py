@@ -15,7 +15,7 @@ def dfs(graph, start):
     queue = deque([start])  # Use a deque for efficient stack operations
 
     while queue:
-        vertex = queue.popleft()
+        vertex = queue.pop()
         if vertex not in visited:
             visited.add(vertex)
             print(vertex, end=" ")
