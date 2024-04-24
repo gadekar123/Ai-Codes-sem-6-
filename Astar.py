@@ -25,43 +25,79 @@ class Graph:
         else:
             return None
 
-def calculate_heuristic(current_node, goal_node, graph):
+    def get_edge_weight(self, node1, node2):
+        if node1 in self.graph and node2 in self.graph:
+            if node2 in self.graph[node1]['neighbors']:
+                return self.graph[node1]['neighbors'][node2]
+        return None
+
+def calculate_heuristic(current_node, goal_node, graph, f, global_node):
     current_coordinates = graph.get_coordinates(current_node)
     goal_coordinates = graph.get_coordinates(goal_node)
-    return abs(current_coordinates[0] - goal_coordinates[0]) + abs(current_coordinates[1] - goal_coordinates[1])
+    edge_weight = graph.get_edge_weight(global_node, current_node)
+    if edge_weight is not None:
+        node_f = f + edge_weight
+    else:
+        node_f = float('inf')  # Assigning a large value for edge weight to make it unreachable
+    return abs(current_coordinates[0] - goal_coordinates[0]) + abs(current_coordinates[1] - goal_coordinates[1]), node_f
+
 
 def best_first_search(graph, start_node, goal_node):
     visited = set()
-    priority_queue = [(start_node_f, start_node_g, start_node)]  # (heuristic value, node)
-    
+    global_node = start_node
+    start_total_heuristic, start_node_f = calculate_heuristic(start_node, goal_node, graph, 0, global_node)
+    priority_queue = [(start_total_heuristic, start_node_f, start_node, 0)]  # (total heuristic value, f value, node, g value)
     while priority_queue:
-        f , g , current_node = heapq.heappop(priority_queue)
+        total_h, node_f, current_node, g_value = heapq.heappop(priority_queue)
         if current_node == goal_node:
-            return True  # Goal reached
-        
+            return True, g_value  # Goal reached
+        global_node = current_node
+
         if current_node not in visited:
             visited.add(current_node)
             neighbors = graph.get_neighbors(current_node)
             for neighbor, weight in neighbors.items():
-                heapq.heappush(priority_queue, (calculate_heuristic(neighbor, goal_node, graph  ), neighbor))
+                neighbor_heuristic, neighbor_f = calculate_heuristic(neighbor, goal_node, graph, node_f, global_node)
+                heapq.heappush(priority_queue, (total_h + neighbor_heuristic, neighbor_f, neighbor, g_value + weight))
+
+    return False, None  # Goal not reachable
+
+# Function to take input for graph data
+def input_graph():
+    g = Graph()
+    num_nodes = int(input("Enter the number of nodes in the graph: "))
+    for i in range(num_nodes):
+        node_name = input(f"Enter node {i + 1} name: ")
+        x, y = map(int, input(f"Enter coordinates (x, y) for node {node_name}: ").split())
+        g.add_node(node_name, x, y)
     
-    return False  # Goal not reachable
+    num_edges = int(input("Enter the number of edges in the graph: "))
+    for i in range(num_edges):
+        node1, node2, weight = input(f"Enter edge {i + 1} (node1 node2 weight): ").split()
+        weight = int(weight)
+        g.add_edge(node1, node2, weight)
+    
+    return g
+
+# Take input for start and goal nodes
+start_node = input("Enter the start node: ")
+goal_node = input("Enter the goal node: ")
 
 # Hardcoded graph data
-g = Graph()
-g.add_node('A', 0, 0)
-g.add_node('B', 1, 2)
-g.add_node('C', 3, 1)
-g.add_edge('A', 'B', 5)
-g.add_edge('B', 'C', 3)
-g.add_edge('C', 'A', 2)
+g = input_graph()
 
-start_node = 'C'
-goal_node = 'A'
-start_node_f = 0
-start_node_coordinates = g.get_coordinates(start_node)
-start_node_g = start_node_coordinates[0] + start_node_coordinates[1]
-if best_first_search(g, start_node, goal_node):
+found, g_value = best_first_search(g, start_node, goal_node)
+if found:
     print(f"Goal node '{goal_node}' reached from start node '{start_node}'.")
+    print("Path:")
+    print(goal_node, f"G: {g_value}")
+    current_node = goal_node
+    while current_node != start_node:
+        neighbors = g.get_neighbors(current_node)
+        for neighbor, weight in neighbors.items():
+            if g_value - weight == g.get_edge_weight(neighbor, current_node):
+                print(neighbor, f"G: {g_value - weight}")
+                current_node = neighbor
+                break
 else:
     print(f"Goal node '{goal_node}' not reachable from start node '{start_node}'.")
